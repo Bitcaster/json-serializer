@@ -444,7 +444,7 @@ class JsonSerializer
             throw new JsonSerializerException('Unable to find class ' . $className);
         }
 
-        if ($className === 'DateTime') {
+        if ($className === 'DateTime' || $className === 'MongoDB\BSON\UTCDateTime') {
             $obj = $this->restoreUsingUnserialize($className, $value);
             $this->objectMapping[$this->objectMappingIndex++] = $obj;
             return $obj;
