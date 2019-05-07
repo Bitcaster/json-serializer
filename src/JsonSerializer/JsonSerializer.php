@@ -338,9 +338,23 @@ class JsonSerializer
         $data = array();
         foreach ($properties as $property) {
             try {
-                $propRef = $ref->getProperty($property);
-                $propRef->setAccessible(true);
-                $data[$property] = $propRef->getValue($value);
+                if ($ref->hasProperty($property)) {
+                    $propRef = $ref->getProperty($property);
+                    $propRef->setAccessible(true);
+                    $data[$property] = $propRef->getValue($value);
+                } else {
+                    if (method_exists($value, $property)) {
+                        $data[$property] = $value->$property;
+                    } elseif (extension_loaded('mongodb') && is_a($value, 'MongoDB\BSON\UTCDateTime')) {
+                        /** @var \MongoDB\BSON\UTCDateTime $value */
+                        $data[$property] = $value->toDateTime()->getTimestamp();
+                    } elseif (extension_loaded('mongodb') && is_a($value, 'MongoDB\BSON\ObjectId')) {
+                        /** @var \MongoDB\BSON\ObjectId $value */
+                        $data[$property] = (string)$value;
+                    } else {
+                        $data[$property] = null;
+                    }
+                }
             } catch (ReflectionException $e) {
                 $data[$property] = $value->$property;
             }
@@ -444,8 +458,20 @@ class JsonSerializer
             throw new JsonSerializerException('Unable to find class ' . $className);
         }
 
-        if ($className === 'DateTime' || $className === 'MongoDB\BSON\UTCDateTime') {
+        if ($className === 'DateTime') {
             $obj = $this->restoreUsingUnserialize($className, $value);
+            $this->objectMapping[$this->objectMappingIndex++] = $obj;
+            return $obj;
+        }
+
+        if (extension_loaded('mongodb') && $className === 'MongoDB\BSON\ObjectId') {
+            $obj = new \MongoDB\BSON\ObjectId($value['oid']);
+            $this->objectMapping[$this->objectMappingIndex++] = $obj;
+            return $obj;
+        }
+
+        if (extension_loaded('mongodb') && $className === 'MongoDB\BSON\UTCDateTime') {
+            $obj = new \MongoDB\BSON\UTCDateTime($value['milliseconds']);
             $this->objectMapping[$this->objectMappingIndex++] = $obj;
             return $obj;
         }
