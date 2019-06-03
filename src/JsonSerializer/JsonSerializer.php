@@ -346,8 +346,12 @@ class JsonSerializer
                     if (method_exists($value, $property)) {
                         $data[$property] = $value->$property;
                     } elseif (extension_loaded('mongodb') && is_a($value, 'MongoDB\BSON\UTCDateTime')) {
+                        $timestamp = $value->toDateTime()->getTimestamp();
+                        if (strlen((string) $timestamp) !== 13 && !empty($timestamp) && $timestamp != 0) {
+                            $timestamp = (int) $timestamp * 1000;
+                        }
                         /** @var \MongoDB\BSON\UTCDateTime $value */
-                        $data[$property] = $value->toDateTime()->getTimestamp();
+                        $data[$property] = $timestamp;
                     } elseif (extension_loaded('mongodb') && is_a($value, 'MongoDB\BSON\ObjectId')) {
                         /** @var \MongoDB\BSON\ObjectId $value */
                         $data[$property] = (string)$value;
