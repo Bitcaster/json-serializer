@@ -76,6 +76,12 @@ class JsonSerializer
      */
     protected $undefinedAttributeMode = self::UNDECLARED_PROPERTY_MODE_SET;
 
+    protected $notAllowedProperties =
+        [
+            'connection',
+            'resolver'
+        ];
+
     /**
      * Constructor.
      *
@@ -337,6 +343,9 @@ class JsonSerializer
     {
         $data = array();
         foreach ($properties as $property) {
+            if (in_array($property, $this->getNotAllowedProperties())) {
+                continue;
+            }
             try {
                 if ($ref->hasProperty($property)) {
                     $propRef = $ref->getProperty($property);
@@ -548,5 +557,21 @@ class JsonSerializer
         $this->objectStorage = new SplObjectStorage();
         $this->objectMapping = array();
         $this->objectMappingIndex = 0;
+    }
+
+    /**
+     * @return array
+     */
+    public function getNotAllowedProperties(): array
+    {
+        return $this->notAllowedProperties;
+    }
+
+    /**
+     * @param array $notAllowedProperties
+     */
+    public function setNotAllowedProperties(array $notAllowedProperties): void
+    {
+        $this->notAllowedProperties = $notAllowedProperties;
     }
 }
