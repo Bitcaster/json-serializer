@@ -19,19 +19,25 @@
         }
     ],
     "require": {
-        "php": ">=5.4.0",
+        "php": "^7.0 || ^8.0",
         "ext-mbstring": "*"
     },
     "suggest": {
         "jeremeamia/superclosure": "Allow to serialize PHP closures"
     },
     "require-dev": {
-        "phpunit/phpunit": "5.*"
+        "phpunit/phpunit": ">=6.0 <10.0"
     },
     "autoload": {
         "psr-4": {
             "Zumba\\": "src/",
             "Zumba\\JsonSerializer\\Test\\": "tests/"
         }
+    },
+    "archive": {
+        "exclude": [
+            "/tests",
+            "/phpunit.xml"
+        ]
     }
 }
