@@ -49,11 +49,11 @@ class JsonSerializer
     protected $objectMappingIndex = 0;
 
     /**
-     * Closure serializer instance
+     * Closure manager
      *
-     * @var ClosureSerializerInterface
+     * @var ClosureSerializer\ClosureSerializerManager
      */
-    protected $closureSerializer;
+    protected $closureManager;
 
     /**
      * Map of custom object serializers
@@ -78,15 +78,31 @@ class JsonSerializer
     /**
      * Constructor.
      *
-     * @param ClosureSerializerInterface $closureSerializer
+     * @param ClosureSerializerInterface $closureSerializer This parameter is deprecated and will be removed in 5.0.0. Use addClosureSerializer() instead.
      * @param array                      $customObjectSerializerMap
      */
     public function __construct(
         ClosureSerializerInterface $closureSerializer = null,
         $customObjectSerializerMap = []
     ) {
-        $this->closureSerializer = $closureSerializer;
+        $this->closureManager = new ClosureSerializer\ClosureSerializerManager();
+        if ($closureSerializer) {
+            trigger_error(
+                'Passing a ClosureSerializerInterface to the constructor is deprecated and will be removed in 4.0.0. Use addClosureSerializer() instead.',
+                E_USER_DEPRECATED
+            );
+            $this->addClosureSerializer(new ClosureSerializer\SuperClosureSerializer($closureSerializer));
+        }
+
         $this->customObjectSerializerMap = (array)$customObjectSerializerMap;
+    }
+
+    /**
+     * Add a closure serializer
+     */
+    public function addClosureSerializer(ClosureSerializer\ClosureSerializer $closureSerializer)
+    {
+        $this->closureManager->addSerializer($closureSerializer);
     }
 
     /**
@@ -248,12 +264,15 @@ class JsonSerializer
             return array_map([$this, __FUNCTION__], $value);
         }
         if ($value instanceof \Closure) {
-            if (!$this->closureSerializer) {
+            $closureSerializer = $this->closureManager->getPreferredSerializer();
+            if (!$closureSerializer) {
                 throw new JsonSerializerException('Closure serializer not given. Unable to serialize closure.');
             }
             return [
                 static::CLOSURE_IDENTIFIER_KEY => true,
-                'value' => $this->closureSerializer->serialize($value)
+                // Keep BC compat to PHP 7: Don't use "::class" on dynamic class names
+                'serializer' => get_class($closureSerializer),
+                'value' => $closureSerializer->serialize($value)
             ];
         }
         return $this->serializeObject($value);
@@ -376,10 +395,12 @@ class JsonSerializer
         }
 
         if (!empty($value[static::CLOSURE_IDENTIFIER_KEY])) {
-            if (!$this->closureSerializer) {
+            $serializerClass = isset($value['serializer']) ? $value['serializer'] : ClosureSerializer\SuperClosureSerializer::class;
+            $serializer = $this->closureManager->getSerializer($serializerClass);
+            if (!$serializer) {
                 throw new JsonSerializerException('Closure serializer not provided to unserialize closure');
             }
-            return $this->closureSerializer->unserialize($value['value']);
+            return $serializer->unserialize($value['value']);
         }
 
         return array_map([$this, __FUNCTION__], $value);
@@ -455,8 +476,14 @@ class JsonSerializer
             throw new JsonSerializerException('Unable to find class ' . $className);
         }
 
-        if ($className === 'DateTime') {
+        if ($className === 'DateTime' || $className === 'DateTimeImmutable') {
             $obj = $this->restoreUsingUnserialize($className, $value);
+            $this->objectMapping[$this->objectMappingIndex++] = $obj;
+            return $obj;
+        }
+
+        if (is_subclass_of($className, \UnitEnum::class)) {
+            $obj = constant("$className::{$value['name']}");
             $this->objectMapping[$this->objectMappingIndex++] = $obj;
             return $obj;
         }

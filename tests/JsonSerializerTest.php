@@ -2,10 +2,11 @@
 
 namespace Zumba\JsonSerializer\Test;
 
+use Zumba\JsonSerializer\ClosureSerializer;
 use Zumba\JsonSerializer\JsonSerializer;
 use Zumba\JsonSerializer\Exception\JsonSerializerException;
 use stdClass;
-use SuperClosure\Serializer as ClosureSerializer;
+use SuperClosure\Serializer as SuperClosureSerializer;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -80,10 +81,8 @@ class JsonSerializerTest extends TestCase
 
     /**
      * List of scalar data
-     *
-     * @return array
      */
-    public function scalarData()
+    public static function scalarData(): array
     {
         return array(
             array('testing', '"testing"'),
@@ -155,10 +154,8 @@ class JsonSerializerTest extends TestCase
 
     /**
      * List of array data
-     *
-     * @return array
      */
-    public function arrayNoObjectData()
+    public static function arrayNoObjectData(): array
     {
         return array(
             array(array(1, 2, 3), '[1,2,3]'),
@@ -240,6 +237,146 @@ class JsonSerializerTest extends TestCase
         $this->assertInstanceOf('Zumba\JsonSerializer\Test\SupportClasses\EmptyClass', $array['instance']);
     }
 
+
+    /**
+     * Test serialization of Enums
+     *
+     * @return void
+     */
+    public function testSerializeEnums()
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        $unitEnum = SupportEnums\MyUnitEnum::Hearts;
+        $expected = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyUnitEnum","name":"Hearts"}';
+        $this->assertSame($expected, $this->serializer->serialize($unitEnum));
+
+        $backedEnum = SupportEnums\MyBackedEnum::Hearts;
+        $expected = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Hearts","value":"H"}';
+        $this->assertSame($expected, $this->serializer->serialize($backedEnum));
+
+        $intBackedEnum = SupportEnums\MyIntBackedEnum::One;
+        $expected = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyIntBackedEnum","name":"One","value":1}';
+        $this->assertSame($expected, $this->serializer->serialize($intBackedEnum));
+    }
+
+    /**
+     * Test serialization of multiple Enums
+     *
+     * @return void
+     */
+    public function testSerializeMultipleEnums()
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        $obj = new stdClass();
+        $obj->enum1 = SupportEnums\MyUnitEnum::Hearts;
+        $obj->enum2 = SupportEnums\MyBackedEnum::Hearts;
+        $obj->enum3 = SupportEnums\MyIntBackedEnum::One;
+        $obj->enum4 = SupportEnums\MyUnitEnum::Hearts;
+        $obj->enum5 = SupportEnums\MyBackedEnum::Hearts;
+        $obj->enum6 = SupportEnums\MyIntBackedEnum::One;
+
+        $expected = '{"@type":"stdClass","enum1":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyUnitEnum","name":"Hearts"},"enum2":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Hearts","value":"H"},"enum3":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyIntBackedEnum","name":"One","value":1},"enum4":{"@type":"@1"},"enum5":{"@type":"@2"},"enum6":{"@type":"@3"}}';
+        $this->assertSame($expected, $this->serializer->serialize($obj));
+    }
+
+    /**
+     * Test unserialization of Enums
+     *
+     * @return void
+     */
+    public function testUnserializeEnums()
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyUnitEnum","name":"Hearts"}';
+        $obj = $this->serializer->unserialize($serialized);
+        $this->assertInstanceOf('Zumba\JsonSerializer\Test\SupportEnums\MyUnitEnum', $obj);
+        $this->assertSame(SupportEnums\MyUnitEnum::Hearts, $obj);
+
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Hearts","value":"H"}';
+        $obj = $this->serializer->unserialize($serialized);
+        $this->assertInstanceOf('Zumba\JsonSerializer\Test\SupportEnums\MyBackedEnum', $obj);
+        $this->assertSame(SupportEnums\MyBackedEnum::Hearts, $obj);
+
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyIntBackedEnum","name":"Two","value":2}';
+        $obj = $this->serializer->unserialize($serialized);
+        $this->assertInstanceOf('Zumba\JsonSerializer\Test\SupportEnums\MyIntBackedEnum', $obj);
+        $this->assertSame(SupportEnums\MyIntBackedEnum::Two, $obj);
+        $this->assertSame(SupportEnums\MyIntBackedEnum::Two->value, $obj->value);
+
+        // wrong value of BackedEnum is ignored
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Hearts","value":"S"}';
+        $obj = $this->serializer->unserialize($serialized);
+        $this->assertInstanceOf('Zumba\JsonSerializer\Test\SupportEnums\MyBackedEnum', $obj);
+        $this->assertSame(SupportEnums\MyBackedEnum::Hearts, $obj);
+        $this->assertSame(SupportEnums\MyBackedEnum::Hearts->value, $obj->value);
+    }
+
+    /**
+     * Test unserialization of multiple Enums
+     *
+     * @return void
+     */
+    public function testUnserializeMultipleEnums()
+    {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        $obj = new stdClass();
+        $obj->enum1 = SupportEnums\MyUnitEnum::Hearts;
+        $obj->enum2 = SupportEnums\MyBackedEnum::Hearts;
+        $obj->enum3 = SupportEnums\MyIntBackedEnum::One;
+        $obj->enum4 = SupportEnums\MyUnitEnum::Hearts;
+        $obj->enum5 = SupportEnums\MyBackedEnum::Hearts;
+        $obj->enum6 = SupportEnums\MyIntBackedEnum::One;
+
+        $serialized = '{"@type":"stdClass","enum1":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyUnitEnum","name":"Hearts"},"enum2":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Hearts","value":"H"},"enum3":{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyIntBackedEnum","name":"One","value":1},"enum4":{"@type":"@1"},"enum5":{"@type":"@2"},"enum6":{"@type":"@3"}}';
+        $actualObj = $this->serializer->unserialize($serialized);
+        $this->assertInstanceOf('stdClass', $actualObj);
+        $this->assertEquals($obj, $actualObj);
+    }
+
+    /**
+     * Test unserialization of wrong UnitEnum
+     *
+     * @return void
+     */
+    public function testUnserializeWrongUnitEnum()  {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        // bad case generate Error
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyUnitEnum","name":"Circles"}';
+        $this->expectException(\Error::class);
+        $this->serializer->unserialize($serialized);
+    }
+
+    /**
+     * Test unserialization of wrong BackedEnum
+     *
+     * @return void
+     */
+    public function testUnserializeWrongBackedEnum()  {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped("Enums are only available since PHP 8.1");
+        }
+
+        // bad case generate Error
+        $serialized = '{"@type":"Zumba\\\\JsonSerializer\\\\Test\\\\SupportEnums\\\\MyBackedEnum","name":"Circles","value":"C"}';
+        $this->expectException(\Error::class);
+        $this->serializer->unserialize($serialized);
+    }
+
     /**
      * Test serialization of objects using the custom serializers
      *
@@ -296,6 +433,10 @@ class JsonSerializerTest extends TestCase
         $date = new \DateTime('2014-06-15 12:00:00', new \DateTimeZone('UTC'));
         $obj = $this->serializer->unserialize($this->serializer->serialize($date));
         $this->assertSame($date->getTimestamp(), $obj->getTimestamp());
+
+        $date = new \DateTimeImmutable('2014-06-15 12:00:00', new \DateTimeZone('UTC'));
+        $obj = $this->serializer->unserialize($this->serializer->serialize($date));
+        $this->assertSame($date->getTimestamp(), $obj->getTimestamp());
     }
 
     /**
@@ -303,13 +444,13 @@ class JsonSerializerTest extends TestCase
      *
      * @return void
      */
-    public function testSerializationOfClosure()
+    public function testSerializationOfClosureWithSuperClosureOnConstructor()
     {
         if (!class_exists('SuperClosure\Serializer')) {
             $this->markTestSkipped('SuperClosure is not installed.');
         }
 
-        $closureSerializer = new ClosureSerializer();
+        $closureSerializer = new SuperClosureSerializer();
         $serializer = new JsonSerializer($closureSerializer);
         $serialized = $serializer->serialize(
             array(
@@ -328,6 +469,111 @@ class JsonSerializerTest extends TestCase
     }
 
     /**
+     * Test the serialization of closures providing closure serializer
+     *
+     * @return void
+     */
+    public function testSerializationOfClosureWithSuperClosureOnManager()
+    {
+        if (!class_exists('SuperClosure\Serializer')) {
+            $this->markTestSkipped('SuperClosure is not installed.');
+        }
+
+        $closureSerializer = new SuperClosureSerializer();
+        $serializer = new JsonSerializer();
+        $serializer->addClosureSerializer(new ClosureSerializer\SuperClosureSerializer($closureSerializer));
+        $serialized = $serializer->serialize(
+            array(
+            'func' => function () {
+                return 'it works';
+            },
+            'nice' => true
+            )
+        );
+
+        $unserialized = $serializer->unserialize($serialized);
+        $this->assertTrue(is_array($unserialized));
+        $this->assertTrue($unserialized['nice']);
+        $this->assertInstanceOf('Closure', $unserialized['func']);
+        $this->assertSame('it works', $unserialized['func']());
+    }
+
+    /**
+     * Test the serialization of closures providing closure serializer
+     *
+     * @return void
+     */
+    public function testSerializationOfClosureWitOpisClosure()
+    {
+        if (!class_exists('Opis\Closure\SerializableClosure')) {
+            $this->markTestSkipped('OpisClosure is not installed.');
+        }
+
+        $serializer = new JsonSerializer();
+        $serializer->addClosureSerializer(new ClosureSerializer\OpisClosureSerializer());
+        $serialized = $serializer->serialize(
+            array(
+            'func' => function () {
+                return 'it works';
+            },
+            'nice' => true
+            )
+        );
+
+        $unserialized = $serializer->unserialize($serialized);
+        $this->assertTrue(is_array($unserialized));
+        $this->assertTrue($unserialized['nice']);
+        $this->assertInstanceOf('Closure', $unserialized['func']);
+        $this->assertSame('it works', $unserialized['func']());
+    }
+
+    /**
+     * Test the serialization of closures providing closure serializer
+     *
+     * @return void
+     */
+    public function testSerializationOfClosureWitMultipleClosures()
+    {
+        if (!class_exists('SuperClosure\Serializer')) {
+            $this->markTestSkipped('SuperClosure is not installed.');
+        }
+        if (!class_exists('Opis\Closure\SerializableClosure')) {
+            $this->markTestSkipped('OpisClosure is not installed.');
+        }
+
+        $closureSerializer = new SuperClosureSerializer();
+        $serializer = new JsonSerializer();
+        $serializer->addClosureSerializer(new ClosureSerializer\SuperClosureSerializer($closureSerializer));
+
+        $serializeData = array(
+            'func' => function () {
+                return 'it works';
+            },
+            'nice' => true
+        );
+
+        // Make sure it was serialized with SuperClosure
+        $serialized = $serializer->serialize($serializeData);
+        echo $serialized;
+        $this->assertGreaterThanOrEqual(0, strpos($serialized, 'SuperClosure'));
+        $this->assertFalse(strpos($serialized, 'OpisClosure'));
+
+        // Test adding a new preferred closure serializer
+        $serializer->addClosureSerializer(new ClosureSerializer\OpisClosureSerializer());
+
+        $unserialized = $serializer->unserialize($serialized);
+        $this->assertTrue(is_array($unserialized));
+        $this->assertTrue($unserialized['nice']);
+        $this->assertInstanceOf('Closure', $unserialized['func']);
+        $this->assertSame('it works', $unserialized['func']());
+
+        // Serialize again with the new preferred closure serializer
+        $serialized = $serializer->serialize($serializeData);
+        $this->assertFalse(strpos($serialized, 'SuperClosure'));
+        $this->assertGreaterThanOrEqual(0, strpos($serialized, 'OpisClosure'));
+    }
+
+    /**
      * Test the unserialization of closures without providing closure serializer
      *
      * @return void
@@ -338,7 +584,7 @@ class JsonSerializerTest extends TestCase
             $this->markTestSkipped('SuperClosure is not installed.');
         }
 
-        $closureSerializer = new ClosureSerializer();
+        $closureSerializer = new SuperClosureSerializer();
         $serializer = new JsonSerializer($closureSerializer);
         $serialized = $serializer->serialize(
             array(
