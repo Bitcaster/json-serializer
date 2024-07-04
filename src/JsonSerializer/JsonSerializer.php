@@ -6,6 +6,7 @@ use InvalidArgumentException;
 use ReflectionClass;
 use ReflectionException;
 use SplObjectStorage;
+use SuperClosure\Serializer as SuperClosureSerializer;
 use Zumba\JsonSerializer\Exception\JsonSerializerException;
 use SuperClosure\SerializerInterface as ClosureSerializerInterface;
 
