@@ -116,31 +116,27 @@ class JsonSerializer
     /**
      * Serialize the value in JSON
      *
-     * @param mixed $value
-     *
+     * @param  mixed $value
      * @return string JSON encoded
      * @throws JsonSerializerException
      */
-    public function serialize(mixed $value): string
+    public function serialize($value)
     {
         $this->reset();
         $serializedData = $this->serializeData($value);
-        try {
-            $encoded = json_encode($serializedData, JSON_THROW_ON_ERROR | $this->calculateEncodeOptions());
-        } catch (JsonException $e) {
-            if ($e->getCode() !== JSON_ERROR_UTF8) {
-                throw new JsonSerializerException('Invalid data to encode to JSON. Error: ' . $e->getMessage() . '(Code ' . $e->getCode() . ')');
+        $encoded = json_encode($serializedData, $this->calculateEncodeOptions());
+        if ($encoded === false || json_last_error() != JSON_ERROR_NONE) {
+            if (json_last_error() != JSON_ERROR_UTF8) {
+                throw new JsonSerializerException('Invalid data to encode to JSON. Error: ' . json_last_error());
             }
+
             $serializedData = $this->encodeNonUtf8ToUtf8($serializedData);
-            try {
-                $encoded = json_encode($serializedData, JSON_THROW_ON_ERROR | $this->calculateEncodeOptions());
-            } catch (JsonException $e) {
-                if ($encoded === false || $e->getCode() !== JSON_ERROR_NONE) {
-                    throw new JsonSerializerException('Invalid data to encode to JSON. Error: ' . $e->getMessage() . '(Code ' . $e->getCode() . ')');
-                }
+            $encoded = json_encode($serializedData, $this->calculateEncodeOptions());
+
+            if ($encoded === false || json_last_error() != JSON_ERROR_NONE) {
+                throw new JsonSerializerException('Invalid data to encode to JSON. Error: ' . json_last_error());
             }
         }
-
         return $this->processEncodedValue($encoded);
     }
 
@@ -385,23 +381,19 @@ class JsonSerializer
     /**
      * Unserialize the value from JSON
      *
-     * @param string $value
-     *
+     * @param  string $value
      * @return mixed
      */
-    public function unserialize(string $value): mixed
+    public function unserialize($value)
     {
         $this->reset();
-        try {
-            $data = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
-            if ($data === null && $e->getCode() !== JSON_ERROR_NONE) {
-                throw new JsonSerializerException('Invalid JSON to unserialize.' . $e->getCode() . ' ' . $e->getMessage());
-            }
+        $data = json_decode($value, true);
+        if ($data === null && json_last_error() != JSON_ERROR_NONE) {
+            throw new JsonSerializerException('Invalid JSON to unserialize.');
+        }
 
-            if (mb_strpos($value, static::UTF8ENCODED_IDENTIFIER_KEY) !== false) {
-                $data = $this->decodeNonUtf8FromUtf8($data);
-            }
+        if (mb_strpos($value, static::UTF8ENCODED_IDENTIFIER_KEY) !== false) {
+            $data = $this->decodeNonUtf8FromUtf8($data);
         }
 
         return $this->unserializeData($data);
