@@ -12,12 +12,12 @@ class SuperClosureSerializer implements ClosureSerializer {
      *
      * @var SuperClosureSerializerInterface
      */
-    protected $serializer;
+    protected SuperClosureSerializerInterface $serializer;
 
     /**
      * Closure serializer instance
      *
-     * @var SuperClosureSerializerInterface
+     * @return void
      */
     public function __construct(SuperClosureSerializerInterface $serializer)
     {
@@ -30,7 +30,7 @@ class SuperClosureSerializer implements ClosureSerializer {
      * @param Closure $closure
      * @return string
      */
-    public function serialize(Closure $closure)
+    public function serialize(Closure $closure): string
     {
         return $this->serializer->serialize($closure);
     }
@@ -39,9 +39,10 @@ class SuperClosureSerializer implements ClosureSerializer {
      * Unserialize a closure
      *
      * @param string $serialized
+     *
      * @return Closure
      */
-    public function unserialize($serialized)
+    public function unserialize(string $serialized): Closure
     {
         return $this->serializer->unserialize($serialized);
     }

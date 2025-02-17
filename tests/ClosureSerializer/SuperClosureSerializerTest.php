@@ -2,38 +2,43 @@
 
 namespace Zumba\JsonSerializer\Test\ClosureSerializer;
 
+use Closure;
 use PHPUnit\Framework\TestCase;
+use SuperClosure\Serializer;
+use SuperClosure\SerializerInterface;
 use Zumba\JsonSerializer\ClosureSerializer\SuperClosureSerializer;
 
 class SuperClosureSerializerTest extends TestCase
 {
     public function setUp(): void
     {
-        if (! class_exists(\SuperClosure\SerializerInterface::class)) {
+        if (! class_exists(SerializerInterface::class)) {
             $this->markTestSkipped('Missing jeremeamia/superclosure to run this test');
         }
     }
 
-    public function testSerialize() {
+    public function testSerialize(): void
+    {
         $closure = function() {
             return 'foo';
         };
-        $serializer = new SuperClosureSerializer(new \SuperClosure\Serializer());
+        $serializer = new SuperClosureSerializer(new Serializer());
         $serialized = $serializer->serialize($closure);
         $this->assertNotEmpty($serialized);
-        $this->assertTrue(is_string($serialized));
+        $this->assertIsString($serialized);
         $this->assertNotEquals($closure, $serialized);
     }
 
-    public function testUnserialize() {
+    public function testUnserialize(): void
+    {
         $closure = function() {
             return 'foo';
         };
-        $serializer = new SuperClosureSerializer(new \SuperClosure\Serializer());
+        $serializer = new SuperClosureSerializer(new Serializer());
         $serialized = $serializer->serialize($closure);
         $unserialized = $serializer->unserialize($serialized);
         $this->assertNotEmpty($unserialized);
-        $this->assertTrue($unserialized instanceof \Closure);
+        $this->assertInstanceOf(Closure::class, $unserialized);
         $this->assertEquals($closure(), $unserialized());
     }
 }

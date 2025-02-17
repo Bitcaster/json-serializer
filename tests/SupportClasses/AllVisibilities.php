@@ -5,7 +5,7 @@ namespace Zumba\JsonSerializer\Test\SupportClasses;
 class AllVisibilities
 {
 
-    public $pub = 'this is public';
-    protected $prot = 'protected';
-    private $priv = 'dont tell anyone';
+    public EmptyClass|string $pub = 'this is public';
+    protected EmptyClass|string $prot = 'protected';
+    private EmptyClass|string $priv = 'dont tell anyone';
 }

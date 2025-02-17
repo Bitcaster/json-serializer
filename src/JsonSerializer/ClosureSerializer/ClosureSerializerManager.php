@@ -9,12 +9,12 @@ class ClosureSerializerManager {
      *
      * @var array
      */
-    protected $closureSerializer = array();
+    protected array $closureSerializer = array();
 
     /**
      * Prefered closure serializer
      */
-    protected $preferred = array(
+    protected array $preferred = array(
         SuperClosureSerializer::class,
         OpisClosureSerializer::class
     );
@@ -25,7 +25,7 @@ class ClosureSerializerManager {
      * @param ClosureSerializer $closureSerializer
      * @return self
      */
-    public function addSerializer(ClosureSerializer $closureSerializer)
+    public function addSerializer(ClosureSerializer $closureSerializer): self
     {
         // Keep BC compat to PHP 7: Don't use "::class" on dynamic class names
         $classname = get_class($closureSerializer);
@@ -38,7 +38,7 @@ class ClosureSerializerManager {
      *
      * @return ClosureSerializer|null
      */
-    public function getPreferredSerializer()
+    public function getPreferredSerializer(): ?ClosureSerializer
     {
         if (empty($this->closureSerializer)) {
             return null;
@@ -58,11 +58,8 @@ class ClosureSerializerManager {
      * @param string $classname
      * @return ClosureSerializer|null
      */
-    public function getSerializer(string $classname)
+    public function getSerializer(string $classname): ?ClosureSerializer
     {
-        if (isset($this->closureSerializer[$classname])) {
-            return $this->closureSerializer[$classname];
-        }
-        return null;
+        return $this->closureSerializer[$classname] ?? null;
     }
 }

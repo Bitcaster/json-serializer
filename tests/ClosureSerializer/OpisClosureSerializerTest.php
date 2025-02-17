@@ -2,6 +2,7 @@
 
 namespace Zumba\JsonSerializer\Test\ClosureSerializer;
 
+use Closure;
 use PHPUnit\Framework\TestCase;
 use Zumba\JsonSerializer\ClosureSerializer\OpisClosureSerializer;
 
@@ -14,18 +15,20 @@ class OpisClosureSerializerTest extends TestCase
         }
     }
 
-    public function testSerialize() {
+    public function testSerialize(): void
+    {
         $closure = function() {
             return 'foo';
         };
         $serializer = new OpisClosureSerializer();
         $serialized = $serializer->serialize($closure);
         $this->assertNotEmpty($serialized);
-        $this->assertTrue(is_string($serialized));
+        $this->assertIsString($serialized);
         $this->assertNotEquals($closure, $serialized);
     }
 
-    public function testUnserialize() {
+    public function testUnserialize(): void
+    {
         $closure = function() {
             return 'foo';
         };
@@ -33,7 +36,7 @@ class OpisClosureSerializerTest extends TestCase
         $serialized = $serializer->serialize($closure);
         $unserialized = $serializer->unserialize($serialized);
         $this->assertNotEmpty($unserialized);
-        $this->assertTrue($unserialized instanceof \Closure);
+        $this->assertInstanceOf(Closure::class, $unserialized);
         $this->assertEquals($closure(), $unserialized());
     }
 }

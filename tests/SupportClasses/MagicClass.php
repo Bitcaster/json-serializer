@@ -5,9 +5,9 @@ namespace Zumba\JsonSerializer\Test\SupportClasses;
 class MagicClass
 {
 
-    public $show = true;
-    public $hide = true;
-    public $woke = false;
+    public bool $show = true;
+    public bool $hide = true;
+    public bool $woke = false;
 
     public function __sleep()
     {

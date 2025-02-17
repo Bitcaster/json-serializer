@@ -4,14 +4,14 @@ namespace Zumba\JsonSerializer\Test\SupportClasses;
 
 class MyTypeSerializer
 {
-    public function serialize(MyType $obj)
+    public function serialize(MyType $obj): array
     {
         return array('fields' => $obj->field1 . ' ' . $obj->field2);
     }
 
-    public function unserialize($values)
+    public function unserialize($values): MyType
     {
-        list($field1, $field2) = explode(' ', $values['fields']);
+        [$field1, $field2] = explode(' ', $values['fields']);
         $obj = new MyType();
         $obj->field1 = $field1;
         $obj->field2 = $field2;
