@@ -244,7 +244,15 @@ class JsonSerializer
             $props[] = $prop->getName();
         }
 
-        return array_unique(array_merge($props, array_keys(get_object_vars($value))));
+        return array_unique(
+            array_merge(
+                $props,
+                array_filter(
+                    array_keys(get_object_vars($value)),
+                    static fn(string $key) => !str_starts_with($key, "\0")
+                )
+            )
+        );
     }
 
     /**
@@ -556,6 +564,10 @@ class JsonSerializer
                 $propRef->setAccessible(true);
                 $propRef->setValue($obj, $this->unserializeData($propertyValue));
             } catch (ReflectionException $e) {
+                // Skip null-byte-prefixed properties
+                if (str_starts_with($property, "\0")) {
+                    continue;
+                }
                 switch ($this->undefinedAttributeMode) {
                     case static::UNDECLARED_PROPERTY_MODE_SET:
                         $obj->$property = $this->unserializeData($propertyValue);
