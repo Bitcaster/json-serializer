@@ -18,6 +18,11 @@ jobs:
     name: PHP ${{ matrix.php-version }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, mongodb
     - name: Validate composer.json and composer.lock
       run: composer validate
     - name: Cache Composer packages
