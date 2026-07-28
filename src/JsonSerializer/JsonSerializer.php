@@ -244,7 +244,15 @@ class JsonSerializer
             $props[] = $prop->getName();
         }
 
-        return array_unique(array_merge($props, array_keys(get_object_vars($value))));
+        return array_unique(
+            array_merge(
+                $props,
+                array_filter(
+                    array_keys(get_object_vars($value)),
+                    static fn(string $key) => !str_starts_with($key, "\0")
+                )
+            )
+        );
     }
 
     /**
@@ -504,7 +512,14 @@ class JsonSerializer
             throw new JsonSerializerException('Unable to find class ' . $className);
         }
 
-        if ($className === 'DateTime' || $className === 'DateTimeImmutable') {
+        // Route every DateTimeInterface implementer (DateTime, DateTimeImmutable AND
+        // subclasses such as Carbon\Carbon) through native unserialize — mirroring the
+        // serialize side, which already stores any DateTimeInterface via (array)$value.
+        // Reconstructing a DateTime subclass through the generic reflection loop below
+        // fails: its (array) cast carries mangled private-property keys ("\0Class\0prop")
+        // that ReflectionClass::getProperty can't resolve, and the magic __set fallback
+        // throws "Cannot access property starting with \0" on PHP 8 (Sentry 4BASED-MQ5).
+        if (is_a($className, DateTimeInterface::class, true)) {
             $obj = $this->restoreUsingUnserialize($className, $value);
             $this->objectMapping[$this->objectMappingIndex++] = $obj;
 
@@ -556,6 +571,10 @@ class JsonSerializer
                 $propRef->setAccessible(true);
                 $propRef->setValue($obj, $this->unserializeData($propertyValue));
             } catch (ReflectionException $e) {
+                // Skip null-byte-prefixed properties
+                if (str_starts_with($property, "\0")) {
+                    continue;
+                }
                 switch ($this->undefinedAttributeMode) {
                     case static::UNDECLARED_PROPERTY_MODE_SET:
                         $obj->$property = $this->unserializeData($propertyValue);

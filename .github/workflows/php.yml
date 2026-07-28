@@ -12,10 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        # This fork (dev-php84) requires PHP ^8.4 in composer.json; testing older
+        # versions only ever failed `composer install` on the platform requirement.
+        php-version: ['8.4']
     name: PHP ${{ matrix.php-version }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, mongodb
     - name: Validate composer.json and composer.lock
       run: composer validate
     - name: Cache Composer packages
@@ -26,8 +33,6 @@ jobs:
         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
         restore-keys: |
           ${{ runner.os }}-php-
-    - name: Install suggested dependencies
-      run: composer require jeremeamia/superclosure opis/closure
     - name: Install dependencies
       if: steps.composer-cache.outputs.cache-hit != 'true'
       run: composer install --prefer-dist --no-progress --no-suggest
