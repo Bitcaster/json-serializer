@@ -12,7 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3', '8.4']
+        # This fork (dev-php84) requires PHP ^8.4 in composer.json; testing older
+        # versions only ever failed `composer install` on the platform requirement.
+        php-version: ['8.4']
     name: PHP ${{ matrix.php-version }}
     steps:
     - uses: actions/checkout@v4

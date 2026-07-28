@@ -512,7 +512,14 @@ class JsonSerializer
             throw new JsonSerializerException('Unable to find class ' . $className);
         }
 
-        if ($className === 'DateTime' || $className === 'DateTimeImmutable') {
+        // Route every DateTimeInterface implementer (DateTime, DateTimeImmutable AND
+        // subclasses such as Carbon\Carbon) through native unserialize — mirroring the
+        // serialize side, which already stores any DateTimeInterface via (array)$value.
+        // Reconstructing a DateTime subclass through the generic reflection loop below
+        // fails: its (array) cast carries mangled private-property keys ("\0Class\0prop")
+        // that ReflectionClass::getProperty can't resolve, and the magic __set fallback
+        // throws "Cannot access property starting with \0" on PHP 8 (Sentry 4BASED-MQ5).
+        if (is_a($className, DateTimeInterface::class, true)) {
             $obj = $this->restoreUsingUnserialize($className, $value);
             $this->objectMapping[$this->objectMappingIndex++] = $obj;
 

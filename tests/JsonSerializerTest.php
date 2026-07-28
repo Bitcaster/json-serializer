@@ -21,6 +21,7 @@ use ReflectionProperty;
 use Zumba\JsonSerializer\Test\SupportClasses\MyTypeSerializer;
 use Zumba\JsonSerializer\Test\SupportClasses\EmptyClass;
 use Zumba\JsonSerializer\Test\SupportClasses\AllVisibilities;
+use Zumba\JsonSerializer\Test\SupportClasses\CarbonLikeDateTime;
 use Zumba\JsonSerializer\Test\SupportClasses\MyType;
 use Zumba\JsonSerializer\Test\SupportEnums\MyBackedEnum;
 use Zumba\JsonSerializer\Test\SupportEnums\MyIntBackedEnum;
@@ -470,6 +471,21 @@ class JsonSerializerTest extends TestCase
         $date = new DateTimeImmutable('2014-06-15 12:00:00', new DateTimeZone('UTC'));
         $obj = $this->serializer->unserialize($this->serializer->serialize($date));
         $this->assertSame($date->getTimestamp(), $obj->getTimestamp());
+    }
+
+    public function testSerializationOfDateTimeSubclass(): void
+    {
+        // Regression for Sentry 4BASED-MQ5 / BS-1155: a DateTimeInterface subclass
+        // (e.g. Carbon) used to fall into the generic reflection loop and crash on its
+        // mangled private-property key ("Cannot access property starting with \0").
+        // It must now round-trip via native unserialize, preserving the instant with
+        // full fidelity and without creating deprecated dynamic properties.
+        $date = new CarbonLikeDateTime('2014-06-15 12:00:00', new DateTimeZone('UTC'));
+        $obj = $this->serializer->unserialize($this->serializer->serialize($date));
+
+        $this->assertInstanceOf(CarbonLikeDateTime::class, $obj);
+        $this->assertSame($date->getTimestamp(), $obj->getTimestamp());
+        $this->assertSame($date->format('c'), $obj->format('c'));
     }
 
     /**
